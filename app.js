@@ -3,31 +3,24 @@ const numberURL = 'http://numbersapi.com/';
 const favorite = 2;
 const favorites = [2,4,8];
 
-async function requestNumber(){
-    let data = await axios.get(`${numberURL}${favorite}?json`);
-    appendFact(data.data[0]);
-}
-requestNumbers();
+axios.get(`${numberURL}${favorite}?json`).then(data => {
+    appendFact(data.data.text);
+});
 
-async function requestNumbers(){
-    let data = await axios.get(`${numberURL}${favorites}?json`);
+axios.get(`${numberURL}${favorites}?json`).then(data => {
     for(let numb in data.data){
         appendFact(data.data[numb]);
     }
-}
-requestNumbers();
-
+});
 
 let promises = [];
 for(let i = 0; i < 4; i++)
     promises.push(axios.get(`${numberURL}${favorite}?json`));
 
-async function requestMultiple(){
-    let facts = await Promise.all(promises);
-    facts => facts.forEach(data => appendFact(data.data.text));
-}
+Promise.all(promises)
+    .then(args => args.forEach(data => appendFact(data.data.text)))
+    .catch(err=>console.log(err));
 
-requestMultiple();
 
 function appendFact(fact){
     let newFact = `<li>${fact}</li>`;
@@ -36,40 +29,48 @@ function appendFact(fact){
 
 //Cards
 const cardURL = 'https://deckofcardsapi.com/api/deck';
+axios.get(`${cardURL}/new/draw`)
+    .then(data => { 
+        logCard(data.data.cards[0]);
+    })
+    .catch(err=>console.log(err));
 
-async function drawCard1(){
-    let data = await axios.get(`${cardURL}/new/draw`);
-    logCard(data.data.cards[0]);
-}
-drawCard1();
-
-async function drawCard2(){
-    let data = await axios.get(`${cardURL}/new/draw`);
-    let card1 = data.data.cards[0];
-    data = await axios.get(`${cardURL}/${data.data.deck_id}/draw`);
-    logCard(card1);
-    logCard(data.data.cards[0]);
-}
-drawCard2();
+const drawnCards = [];
+axios.get(`${cardURL}/new/draw`)
+    .then(data => { 
+        let deckID  = data.data.deck_id;
+        drawnCards.push(data.data.cards[0]);
+        return axios.get(`${cardURL}/${deckID}/draw`);
+    })
+    .then(data => {
+        drawnCards.push(data.data.cards[0]);
+        drawnCards.forEach(logCard);
+    })
+    .catch(err=>console.log(err));
 
 let pageDeckId = null;
 let $button = $("button");
 
-async function pageLoad(){
-    let data = await axios.get(`${cardURL}/new/shuffle`);
+axios.get(`${cardURL}/new/shuffle`)
+.then(data => { 
     pageDeckId  = data.data.deck_id;
     $button.show();
-}
+})
 
-pageLoad();
 
-$('button').on('click', async function(){
-    let data = await axios.get(`${cardURL}/${pageDeckId}/draw`);
-    appendCard(data.data.cards[0]);
-    if(data.data.remaining === 0){
-        $('button').remove();
-    }
-});
+$('button').on('click', () => {
+    
+    axios.get(`${cardURL}/${pageDeckId}/draw`)
+    .then(data => {
+        appendCard(data.data.cards[0]);
+        if(data.data.remaining === 0){
+            $('button').remove();
+        }
+            
+    })
+    .catch(err=>console.log(err));
+
+})
 
 function logCard(card){
     let {suit, value} = card;
